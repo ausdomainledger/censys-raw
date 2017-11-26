@@ -32,7 +32,7 @@ func main() {
 }
 
 func doImport() error {
-	names := map[string][]int64{}
+	names := map[string]int64{}
 	f, err := os.Open(os.Args[1])
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func doImport() error {
 			if start < 0 || end < 0 {
 				continue
 			}
-			names[split[0]] = []int64{start, end}
+			names[split[0]] = start
 		}
 	}
 
@@ -68,7 +68,7 @@ func doImport() error {
 	return nil
 }
 
-func submitNames(domains map[string][]int64) {
+func submitNames(domains map[string]int64) {
 	for name, ts := range domains {
 		etld, err := publicsuffix.EffectiveTLDPlusOne(name)
 		if err != nil {
@@ -76,8 +76,8 @@ func submitNames(domains map[string][]int64) {
 		}
 
 		if _, err := db.Exec(`INSERT INTO domains (domain, first_seen, last_seen, etld) `+
-			`VALUES ($1, $2, $3, $4) ON CONFLICT (domain) DO UPDATE `+
-			`SET last_seen = GREATEST($3,domains.last_seen), first_seen = LEAST(domains.first_seen, $2);`, name, ts[0], ts[1], etld); err != nil {
+			`VALUES ($1, $2, $2, $3) ON CONFLICT (domain) DO UPDATE `+
+			`SET last_seen = GREATEST($2,domains.last_seen), first_seen = LEAST(domains.first_seen, $2);`, name, ts, etld); err != nil {
 			log.Printf("Failed to insert/update %s: %v", name, err)
 		}
 	}
